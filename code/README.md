@@ -19,6 +19,7 @@ for Assembly ca65 from the [cc65 C Compiler Utility](https://github.com/cc65/cc6
     * cstartup.s - The Assembly file containing the startup code for the C environment
     * cstartup.o - a premade Object file so you don't need to assemble it yourself
     * MemAccess.h - a C Header file containing basic Memory Accessing and bit manipulation Functions
+    * SBC.h - a C Header file containing some define's for SBC specific constants like Memory Addresses
     * SBC_816.scm - the LN65816 Config file used for Linking
     * stdio_functions.c - a C file containing the functions needed for "printf" and such to work
     * stdio_functions.o - a premade Object file so you don't need to assemble it yourself
