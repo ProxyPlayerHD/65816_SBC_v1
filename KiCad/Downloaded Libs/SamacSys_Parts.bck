@@ -1,0 +1,35 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP AVR128DB48
+F NONE
+$ENDCMP
+#
+$CMP PS-2
+D Circular DIN Connectors 6 P R/A W/O HOLDDOWN
+F https://componentsearchengine.com/Datasheets/1/5749266-1.pdf
+$ENDCMP
+#
+$CMP PTS645SK952LFS
+D Tactile Switches 50mA 12VDC SPST N.O. 6mm 260gf ThruHole
+$ENDCMP
+#
+$CMP SSSF012100
+D Slide Switches 1-pole 2-positions
+F https://www.alps.com/prod/info/E/HTML/Switch/Slide/SSSF/SSSF012100.html
+$ENDCMP
+#
+$CMP SST39SF040
+D Microchip SST39SF040-70-4C-PHE, Parallel, Serial 4Mbit Flash Memory, 70ns; 5V, PDIP, 32-Pin
+F https://componentsearchengine.com/Datasheets/1/SST39SF040-70-4C-PHE.pdf
+$ENDCMP
+#
+$CMP UE27-BC54-130
+D AMPHENOL COMMERCIAL PRODUCTS - UE27-BC54-130 - USB CONN, 2.0 TYPE B, RCPT, R/A, THT
+F https://componentsearchengine.com/Datasheets/1/UE27-BC54-130.pdf
+$ENDCMP
+#
+$CMP VGA_CONN
+D D-Sub High Density Connectors 15P Sz E Hi Density Pin Rear Insert 4-40
+$ENDCMP
+#
+#End Doc Library

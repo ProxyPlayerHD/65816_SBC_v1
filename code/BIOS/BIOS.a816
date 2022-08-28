@@ -1,0 +1,491 @@
+
+; This code is horrible, but it works and i'll expand it in the future anyways
+
+.feature string_escapes
+.include "SBC.inc"
+
+
+TMP_POINTER		= $00
+SEG_COUNTER		= $03
+
+
+.segment "BSS"
+
+; MEM_STOP:	.res 1		; Last Data Bank that contains Memory
+; VGA_START:	.res 1		; Data Bank where VGA Memory begins
+; VGA_SIZE:	.res 1		; How many Data Banks VGA Memory spans
+
+.segment "HiDATA"
+
+READY_STR:
+	.byte "Ready for Program!\n\x00"
+
+FORMAT_ERR_STR:
+	.byte "\n\nUnsupported Executable Format!\n\n\x00"
+
+TERM_STR:
+	.byte "\n\nProgram Termitated with Code: \x00"
+
+HEX_TABLE:
+	.byte "0123456789ABCDEF"
+
+QUOTIENT_TABLE:
+	.byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $01, $01, $01, $01, $01, $01
+	.byte $01, $01, $01, $01, $02, $02, $02, $02, $02, $02, $02, $02, $02, $02, $03, $03
+	.byte $03, $03, $03, $03, $03, $03, $03, $03, $04, $04, $04, $04, $04, $04, $04, $04
+	.byte $04, $04, $05, $05, $05, $05, $05, $05, $05, $05, $05, $05, $06, $06, $06, $06
+	.byte $06, $06, $06, $06, $06, $06, $07, $07, $07, $07, $07, $07, $07, $07, $07, $07
+	.byte $08, $08, $08, $08, $08, $08, $08, $08, $08, $08, $09, $09, $09, $09, $09, $09
+	.byte $09, $09, $09, $09, $0A, $0A, $0A, $0A, $0A, $0A, $0A, $0A, $0A, $0A, $0B, $0B
+	.byte $0B, $0B, $0B, $0B, $0B, $0B, $0B, $0B, $0C, $0C, $0C, $0C, $0C, $0C, $0C, $0C
+	.byte $0C, $0C, $0D, $0D, $0D, $0D, $0D, $0D, $0D, $0D, $0D, $0D, $0E, $0E, $0E, $0E
+	.byte $0E, $0E, $0E, $0E, $0E, $0E, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
+	.byte $10, $10, $10, $10, $10, $10, $10, $10, $10, $10, $11, $11, $11, $11, $11, $11
+	.byte $11, $11, $11, $11, $12, $12, $12, $12, $12, $12, $12, $12, $12, $12, $13, $13
+	.byte $13, $13, $13, $13, $13, $13, $13, $13, $14, $14, $14, $14, $14, $14, $14, $14
+	.byte $14, $14, $15, $15, $15, $15, $15, $15, $15, $15, $15, $15, $16, $16, $16, $16
+	.byte $16, $16, $16, $16, $16, $16, $17, $17, $17, $17, $17, $17, $17, $17, $17, $17
+	.byte $18, $18, $18, $18, $18, $18, $18, $18, $18, $18, $19, $19, $19, $19, $19, $19
+
+REMAINDER_TABLE:
+	.byte $00, $01, $02, $03, $04, $05, $06, $07, $08, $09, $00, $01, $02, $03, $04, $05
+	.byte $06, $07, $08, $09, $00, $01, $02, $03, $04, $05, $06, $07, $08, $09, $00, $01
+	.byte $02, $03, $04, $05, $06, $07, $08, $09, $00, $01, $02, $03, $04, $05, $06, $07
+	.byte $08, $09, $00, $01, $02, $03, $04, $05, $06, $07, $08, $09, $00, $01, $02, $03
+	.byte $04, $05, $06, $07, $08, $09, $00, $01, $02, $03, $04, $05, $06, $07, $08, $09
+	.byte $00, $01, $02, $03, $04, $05, $06, $07, $08, $09, $00, $01, $02, $03, $04, $05
+	.byte $06, $07, $08, $09, $00, $01, $02, $03, $04, $05, $06, $07, $08, $09, $00, $01
+	.byte $02, $03, $04, $05, $06, $07, $08, $09, $00, $01, $02, $03, $04, $05, $06, $07
+	.byte $08, $09, $00, $01, $02, $03, $04, $05, $06, $07, $08, $09, $00, $01, $02, $03
+	.byte $04, $05, $06, $07, $08, $09, $00, $01, $02, $03, $04, $05, $06, $07, $08, $09
+	.byte $00, $01, $02, $03, $04, $05, $06, $07, $08, $09, $00, $01, $02, $03, $04, $05
+	.byte $06, $07, $08, $09, $00, $01, $02, $03, $04, $05, $06, $07, $08, $09, $00, $01
+	.byte $02, $03, $04, $05, $06, $07, $08, $09, $00, $01, $02, $03, $04, $05, $06, $07
+	.byte $08, $09, $00, $01, $02, $03, $04, $05, $06, $07, $08, $09, $00, $01, $02, $03
+	.byte $04, $05, $06, $07, $08, $09, $00, $01, $02, $03, $04, $05, $06, $07, $08, $09
+	.byte $00, $01, $02, $03, $04, $05, $06, $07, $08, $09, $00, $01, $02, $03, $04, $05
+
+
+
+
+
+.segment "HiCODE"
+
+RESET:
+	ai16
+	LDX #$FDFF			; Stack at $FDFF
+	TXS
+	LDA #$0000			; Direct Page at $0000
+	TCD
+	accu8
+	LDA #%01111111
+	STA f:VIA_IER
+	LDA #%00000000
+	STA f:VIA_DDRA
+	STA f:VIA_ORA
+	STA f:VIA_ORB
+	STA f:CTRL
+	LDA #%10000000
+	STA f:VIA_DDRB
+	
+	LDA #T1_MODE3
+	STA VIA_ACR			; Set up the T1 Timer to generate a square wave on PB7
+	accu16
+	LDA #CLK_20M		; Use a Constant depending on the expected CPU Clock
+	STA VIA_T1C16		; And Throw it into the T1 Timer
+	accu8
+	LDA #%00010000
+	STA f:CTRL			; Enable the Timer Interrupt
+	
+	LDA #$01
+	PHA
+	PLB
+	
+	; LDA #8
+	LDA #0
+	LDX #0
+	LDY #0
+	
+; EXMEM_COUNT:
+	; PHA
+	; PLB				; Update the Data Bank
+	; LDA a:$FFFF		; Get a Byte
+	; EOR #$FF		; Invert it
+	; STA a:$FFFF		; Write it back
+	; NOP
+	; NOP
+	; NOP
+	; NOP
+	; CMP a:$FFFF		; Check if the Byte is the same
+	; BNE @EXIT		; If not, exit
+	; EOR #$FF		; If yes, invert the byte again
+	; STA a:$FFFF		; and write it back to restore the original value
+	; PHB
+	; PLA				; Get the Data Bank into A
+	; INA				; Move it by 1
+	; CMP #$FF		; Check if the Data Bank was at 254 ($FE)
+	; BNE EXMEM_COUNT
+	; PHA
+	; PLB
+	; @EXIT:
+	; PHB
+	; PLA
+	; DEA				; the A Register now contains the last Bank Number where RAM was detected
+	; JSR PRINT_D8
+	; STA MEM_STOP
+	
+	
+FLUSH_SERIAL:
+	LDA f:CTRL		; Load from the CTRL register
+	AND #FT_RXF		; and Check the RXF status bit in it
+	BNE @EXIT		; If it's 1, then the incoming buffer is empty, so exit
+	LDA f:SERIAL	; If it's 0, then there is more data in the buffer to read
+	BRA FLUSH_SERIAL
+	@EXIT:
+	
+READY_TEXT:
+	LDX #100
+	LDY # .LOWORD(READY_STR)
+	JSR PRINT_STR
+	
+	
+	
+	; Load Program from Serial:
+	
+	; * Check Header (ASCII "Z" = PGZ, ASCII "Y" = PGY)
+HEADER_CHK:
+	JSR GET_CHAR
+	; CMP #'Y'
+	; BEQ PGZ_FORMAT
+	CMP #'Z'
+	BEQ PGZ_FORMAT
+	
+	LDX #100
+	LDY # .LOWORD(FORMAT_ERR_STR)
+	JSR PRINT_STR
+	JMP RESET
+STP
+
+; PGY_FORMAT:
+	
+	
+	; PHK
+	; PEA .LOWORD(TERMINATION - 1)
+	; JML [0]
+; STP
+
+; TMP_POINTER
+; SEG_COUNTER
+
+PGZ_FORMAT:
+	@LOOP:
+		LDY #0
+		LDX #0
+		LDA #$0A
+		JSR PRINT_CHAR
+		JSR PRINT_CHAR
+		
+		; Get the 24-bit Address where to load the Segment to
+		JSR GET_CHAR
+		STA TMP_POINTER
+		JSR GET_CHAR
+		STA TMP_POINTER + 1
+		JSR GET_CHAR
+		STA TMP_POINTER + 2
+		
+		JSR PRINT_H8
+		LDA TMP_POINTER + 1
+		JSR PRINT_H8
+		LDA TMP_POINTER
+		JSR PRINT_H8
+		LDA #$0A
+		JSR PRINT_CHAR
+		
+		; Get the total Size of the Segment
+		JSR GET_CHAR
+		STA SEG_COUNTER
+		JSR GET_CHAR
+		STA SEG_COUNTER + 1
+		JSR GET_CHAR
+		STA SEG_COUNTER + 2
+		
+		JSR PRINT_H8
+		LDA SEG_COUNTER + 1
+		JSR PRINT_H8
+		LDA SEG_COUNTER
+		JSR PRINT_H8
+		LDA #$0A
+		JSR PRINT_CHAR
+		
+		; Check if SEG_COUNTER is already 0, and exit the loop if it is
+		LDA SEG_COUNTER
+		BNE @COPY
+		LDA SEG_COUNTER + 1
+		BNE @COPY
+		LDA SEG_COUNTER + 1
+		BNE @COPY
+		BRA @EXIT
+		
+		
+		@COPY:
+			; Decrement the 24-bit SEG_COUNTER by 1 and check if it reached -1
+			CLC
+			LDA SEG_COUNTER
+			SBC #0
+			STA SEG_COUNTER
+			LDA SEG_COUNTER + 1
+			SBC #0
+			STA SEG_COUNTER + 1
+			LDA SEG_COUNTER + 2
+			SBC #0
+			STA SEG_COUNTER + 2
+			BCC @EOL
+			
+			JSR GET_CHAR
+			STA [TMP_POINTER],Y		; Grab a Byte and Throw it into Memory
+			INY						; Point to the next location in Memory
+			INX
+			
+			JSR PRINT_H8
+			LDA #' '
+			JSR PRINT_CHAR
+			CPX #15
+			BNE @COPY
+			LDX #0
+			LDA #$0A
+			JSR PRINT_CHAR
+		BRA @COPY
+		@EOL:
+	BRL @LOOP
+	@EXIT:
+	PHK
+	PEA .LOWORD(TERMINATION - 1)
+	JML [TMP_POINTER]
+STP
+
+TERMINATION:
+	accu8
+	index16
+	PHA
+	LDA #$01
+	PHA
+	PLB
+	LDX #100
+	LDY # .LOWORD(TERM_STR)
+	JSR PRINT_STR
+	PLA
+	JSR PRINT_H8
+	LDA #$0A
+	JSR PRINT_CHAR
+	
+JMP RESET
+
+
+
+FUNCTIONS:
+	accu8
+	index16
+	LDA #'W'
+	STA f:SERIAL
+	STP
+RTL
+
+
+
+
+
+
+
+
+BRK_ISR:
+	
+RTI
+
+
+
+COP_ISR:
+	
+RTI
+
+
+
+IRQ_ISR:
+	
+RTI
+
+
+
+NMI_ISR:
+	
+RTI
+
+
+
+ABT_ISR:
+	
+RTI
+
+
+
+
+
+; Get a Byte from SERIAL
+GET_CHAR:
+	.A8
+	.I16				; Assumes 8-bit A and 16-bit X/Y
+	@LOOP:
+		LDA f:CTRL		; Load from the CTRL register
+		AND #FT_RXF		; and Check the RXF status bit in it
+	BNE @LOOP
+	LDA f:SERIAL		; Load the Byte
+RTS						; And Return
+
+
+; Prints a String pointed by DB:Y to SERIAL
+; X Holds the Maximum amount of Characters allowed in a string
+PRINT_STR:
+	.A8
+	.I16				; Assumes 8-bit A and 16-bit X/Y
+	@LOOP:
+		LDA f:CTRL		; Load from the CTRL register
+		AND #FT_TXE		; and Check the TXE status bit in it
+	BNE @LOOP
+		LDA a:$0000,Y	; Load a Byte from DB:Y
+		BEQ @EXIT		; If it's 0, exit the function
+		STA f:SERIAL	; Otherwise write it to SERIAL
+		INY				; Increment the Pointer to the String
+		DEX				; And Decrement the Character Limit
+	BNE @LOOP			; If it reached 0, exit the function
+	@EXIT:
+RTS
+
+
+; Prints a single Character from A to SERIAL
+PRINT_CHAR:
+	.A8
+	.I16				; Assumes 8-bit A and 16-bit X/Y
+	PHA					; Save A
+	@WAIT:
+		LDA f:CTRL		; Load from the CTRL register
+		AND #FT_TXE		; and Check the TXE status bit in it
+	BNE @WAIT
+	PLA					; Get A back
+	STA f:SERIAL		; And Print it
+RTS
+
+
+; Prints an 8-bit value as Hexadecimal to SERIAL
+PRINT_H8:
+	.A8
+	.I16				; Assumes 8-bit A and 16-bit X/Y
+	PHX
+	PHY					; Preserve X and Y
+	index8
+	PHA					; Push a Copy of A
+	LSR
+	LSR
+	LSR
+	LSR					; Push the High Nibble into the Low Nibble
+	AND #$0F			; Remove the High Nibble
+	TAX					; Throw it into X
+	LDA f:HEX_TABLE,X	; Get the Character from the HEX Table
+	JSR PRINT_CHAR		; And Print it to Serial
+	PLA					; Get the copy of A
+	AND #$0F			; Remove the High Nibble
+	TAX					; Throw it into X
+	LDA f:HEX_TABLE,X	; Get the Character from the HEX Table
+	JSR PRINT_CHAR		; And Print it to Serial
+	index16
+	PLY
+	PLX					; Restore X and Y
+RTS						; And Return
+
+
+; Prints an 8-bit value as Decimal to SERIAL
+PRINT_D8:
+	.A8
+	.I16				; Assumes 8-bit A and 16-bit X/Y
+	PHX
+	PHY					; Preserve X and Y
+	index8
+	LDX #$FF
+	PHX
+	CMP #10
+	BCC @L2
+		@L1:
+			TAX
+			LDA REMAINDER_TABLE,X
+			CLC
+			ADC #'0'
+			PHA
+			LDA QUOTIENT_TABLE,X
+			CMP #10
+		BCS @L1
+	@L2:
+	CLC
+	ADC #'0'
+	@L3:
+		JSR PRINT_CHAR
+		PLA
+	BPL @L3
+	index16
+	PLY
+	PLX					; Restore X and Y
+RTS						; And Return
+
+
+
+
+
+.segment "LoCODE"
+
+RST_INIT:
+	.A8
+	.I8
+	SEI
+	CLD
+	CLC
+	XCE
+	JML RESET
+
+BRK_INIT:
+	JML BRK_ISR
+
+COP_INIT:
+	JML COP_ISR
+
+IRQ_INIT:
+	JML IRQ_ISR
+
+NMI_INIT:
+	JML NMI_ISR
+
+ABT_INIT:
+	JML ABT_ISR
+
+FNC_INIT:
+	JML FUNCTIONS
+
+TER_INIT:
+	JML TERMINATION
+
+
+.segment "VECTORS"
+NATIVE_VEC:
+.word .LOWORD(COP_INIT)
+.word .LOWORD(BRK_INIT)
+.word .LOWORD(ABT_INIT)
+.word .LOWORD(NMI_INIT)
+.word $0000
+.word .LOWORD(IRQ_INIT)
+
+.word .LOWORD(TER_INIT)
+.word .LOWORD(FNC_INIT)
+
+EMU_VEC:
+.word .LOWORD(COP_INIT)
+.word $0000
+.word .LOWORD(ABT_INIT)
+.word .LOWORD(NMI_INIT)
+.word .LOWORD(RST_INIT)
+.word .LOWORD(IRQ_INIT)

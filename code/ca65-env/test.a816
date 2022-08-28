@@ -1,0 +1,20 @@
+; Simple Assembly Example
+
+.feature string_escapes
+.include "SBC.inc"
+
+
+.export init
+
+
+
+.code
+
+init:
+	LDA #69		; Nice
+RTL
+
+
+
+
+

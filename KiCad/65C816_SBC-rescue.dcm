@@ -1,0 +1,31 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP ATF1508ASV-SamacSys_Parts
+F none
+$ENDCMP
+#
+$CMP IS61C5128AL-10KLI-SamacSys_Parts
+F none
+$ENDCMP
+#
+$CMP PS-2-SamacSys_Parts
+F https://componentsearchengine.com/Datasheets/1/5749266-1.pdf
+$ENDCMP
+#
+$CMP SSSF012100-SamacSys_Parts
+F https://www.alps.com/prod/info/E/HTML/Switch/Slide/SSSF/SSSF012100.html
+$ENDCMP
+#
+$CMP UE27-BC54-130-SamacSys_Parts
+F https://componentsearchengine.com/Datasheets/1/UE27-BC54-130.pdf
+$ENDCMP
+#
+$CMP W65C22S6TPLG-14_PLCC-SamacSys_Parts
+F none
+$ENDCMP
+#
+$CMP WDC65C816-SamacSys_Parts
+F https://www.mouser.de/datasheet/2/436/w65c816s-2998.pdf
+$ENDCMP
+#
+#End Doc Library
