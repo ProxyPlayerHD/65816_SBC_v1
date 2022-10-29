@@ -31,10 +31,10 @@ This folder contains the BIOS Code and some basic Assembly and C environments th
 
 | Address  | Name   | Mini Description                           |
 | -------- | ------ | ------------------------------------------ |
-| 0x00FE00 | CTRL   | CPLD Internal Control Register             |
-| 0x00FE01 | FT240X | 8-bit UART that connects over USB          |
-| 0x00FE02 | LFSR   | CPLD Internal Random Number Generator      |
-| 0x00FE1x | VIA    | 65c22 Timer/GPIO Chip, covers 16 Addresses |
+| 0x010000 | CTRL   | CPLD Internal Control Register             |
+| 0x010001 | FT240X | 8-bit UART that connects over USB          |
+| 0x010002 | LFSR   | CPLD Internal Random Number Generator      |
+| 0x01001x | VIA    | 65c22 Timer/GPIO Chip, covers 16 Addresses |
 
 Writing to CTRL:  
 7 - x
