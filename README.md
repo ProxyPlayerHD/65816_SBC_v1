@@ -23,9 +23,9 @@ This folder contains the BIOS Code and some basic Assembly and C environments th
 |  Start   |   End    | Name  |   Size   |
 | -------- | -------- | ----- | -------- |
 | 0x000000 | 0x00FDFF | LoRAM |  63.5 kB |
-| 0x00FE00 | 0x00FEFF | IO    |  256.0 B |
 | 0x00FF00 | 0x00FFFF | LoROM |  256.0 B |
-| 0x010000 | 0x013FFF | HiROM |  16.0 kB |
+| 0x010000 | 0x0100FF | IO    |  256.0 B |
+| 0x010100 | 0x013FFF | HiROM | 15.75 kB |
 | 0x014000 | 0x0FFFFF | HiRAM | 944.0 kB |
 | 0x100000 | 0xFFFFFF | EXT   |  15.0 MB |
 
@@ -37,24 +37,24 @@ This folder contains the BIOS Code and some basic Assembly and C environments th
 | 0x00FE1x | VIA    | 65c22 Timer/GPIO Chip, covers 16 Addresses |
 
 Writing to CTRL:  
-7 - x  
-6 - x  
-5 - Enable External Interrupts  
-4 - Enable Timer Interrupt  
-3 - Enable VIA Interrupts  
-2 - x  
-1 - x  
-0 - x  
+7 - x
+6 - x
+5 - x
+4 - x
+3 - x
+2 - Enable External Interrupts
+1 - Enable Timer Interrupt
+0 - Enable VIA Interrupts
 
 Reading from CTRL:  
-7 - FTDI RXF (0 = Data can be read to FIFO)  
-6 - FTDI TXE (0 = Data can be written from FIFO)  
-5 - External Interrupt Enabled? (0 = No, 1 = Yes)  
-4 - Timer Interrupt Enabled? (0 = No, 1 = Yes)  
-3 - VIA Interrupt Enabled? (0 = No, 1 = Yes)  
-2 - 0  
-1 - 0  
-0 - 0  
+7 - FTDI RXF (0 = Data can be read to FIFO)
+6 - FTDI TXE (0 = Data can be written from FIFO)
+5 - 0
+4 - 0
+3 - 0
+2 - External Interrupt Enabled? (0 = No, 1 = Yes)
+1 - Timer Interrupt Enabled? (0 = No, 1 = Yes)
+0 - VIA Interrupt Enabled? (0 = No, 1 = Yes)
 
 # ROM Weirdness
 the FLASH Chip is a bit strangely mapped.

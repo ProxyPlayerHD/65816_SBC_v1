@@ -1,24 +1,33 @@
 
-; This code is horrible, but it works and i'll expand it in the future anyways
-
 .feature string_escapes
 .include "SBC.inc"
+.import __BSS_LOAD__, __ZEROPAGE_LOAD__
 
 
-TMP_POINTER		= $00
-SEG_COUNTER		= $03
+MAGIC_NUMBER	= $DEADBEEF
+MAGIC_POINTER	= $000000	; 4 Bytes
+TMP_POINTER		= $000004	; 3 Bytes
+SEG_COUNTER		= $000007	; 3 Bytes
+MEM_COUNTER		= $00000A	; 2 Bytes
 
 
-.segment "BSS"
+.bss
 
-; MEM_STOP:	.res 1		; Last Data Bank that contains Memory
-; VGA_START:	.res 1		; Data Bank where VGA Memory begins
-; VGA_SIZE:	.res 1		; How many Data Banks VGA Memory spans
+
 
 .segment "HiDATA"
 
+SPLASH_STR:
+	.byte "Proxy's 65c816 SBC v1\nBIOS ROM v1.1\nAvailable RAM: \x00"
+
 READY_STR:
 	.byte "Ready for Program!\n\x00"
+
+FORMAT_SUCZ_STR:
+	.byte "PGZ Format recognized!\n\x00"
+
+FORMAT_SUCY_STR:
+	.byte "PGY Format recognized!\n\x00"
 
 FORMAT_ERR_STR:
 	.byte "\n\nUnsupported Executable Format!\n\n\x00"
@@ -73,9 +82,9 @@ REMAINDER_TABLE:
 
 RESET:
 	ai16
-	LDX #$FDFF			; Stack at $FDFF
+	LDX #$FEFF						; Set the Stack to $FEFF
 	TXS
-	LDA #$0000			; Direct Page at $0000
+	LDA #$0000						; Set the Direct Page to $0000
 	TCD
 	accu8
 	LDA #%01111111
@@ -89,59 +98,115 @@ RESET:
 	STA f:VIA_DDRB
 	
 	LDA #T1_MODE3
-	STA VIA_ACR			; Set up the T1 Timer to generate a square wave on PB7
+	STA VIA_ACR						; Set up the T1 Timer to generate a square wave on PB7
 	accu16
-	LDA #CLK_20M		; Use a Constant depending on the expected CPU Clock
-	STA VIA_T1C16		; And Throw it into the T1 Timer
+	LDA #CLK_20M					; Use a Constant depending on the expected CPU Clock
+	STA VIA_T1C16					; And Throw it into the T1 Timer
 	accu8
-	LDA #%00010000
-	STA f:CTRL			; Enable the Timer Interrupt
+	LDA #CTRL_T1I
+	STA f:CTRL						; Enable the Timer Interrupt
 	
 	LDA #$01
 	PHA
 	PLB
 	
-	; LDA #8
-	LDA #0
-	LDX #0
-	LDY #0
 	
-; EXMEM_COUNT:
-	; PHA
-	; PLB				; Update the Data Bank
-	; LDA a:$FFFF		; Get a Byte
-	; EOR #$FF		; Invert it
-	; STA a:$FFFF		; Write it back
-	; NOP
-	; NOP
-	; NOP
-	; NOP
-	; CMP a:$FFFF		; Check if the Byte is the same
-	; BNE @EXIT		; If not, exit
-	; EOR #$FF		; If yes, invert the byte again
-	; STA a:$FFFF		; and write it back to restore the original value
-	; PHB
-	; PLA				; Get the Data Bank into A
-	; INA				; Move it by 1
-	; CMP #$FF		; Check if the Data Bank was at 254 ($FE)
-	; BNE EXMEM_COUNT
-	; PHA
-	; PLB
-	; @EXIT:
-	; PHB
-	; PLA
-	; DEA				; the A Register now contains the last Bank Number where RAM was detected
-	; JSR PRINT_D8
-	; STA MEM_STOP
+CHECK_BOOT:
+	; See if the System comes from a Cold or Warm Reset by checking if the Magic Number is present
+	accu16
+	LDA f:MAGIC_POINTER
+	CMP # .LOWORD(MAGIC_NUMBER)
+	BNE @cold
+	LDA f:MAGIC_POINTER + 2
+	CMP # .HIWORD(MAGIC_NUMBER)
+	BNE @cold
+	accu8
+	BRA @warm
 	
+	@cold:
+	.A16
+	LDA # .LOWORD(MAGIC_NUMBER)		; Set up the Magic Number if it's a Cold Start
+	STA f:MAGIC_POINTER
+	LDA # .HIWORD(MAGIC_NUMBER)
+	STA f:MAGIC_POINTER + 2
+	accu8
+	
+	; Count the amount of Additional RAM installed (if any)
+	STZ z:MEM_COUNTER
+	PHB								; Save the Data Bank
+	LDA #16
+	PHA
+	PLB								; Start Counting from Bank 16 (1MB)
+	LDX #2
+	@cnt_loop:
+		LDA a:$6969					; Get a Byte from Memory
+		EOR #$FF					; Invert it (I'm still kinda mad XOR is not a valid alternative to EOR)
+		PHA							; Save a copy to the Stack
+		STA a:$6969					; Write the Byte back to Memory
+		NOP
+		NOP
+		PLA							; Get the Copy back
+		CMP a:$6969					; And Compare it to the one in Memory
+		BNE @fail					; If they are not the same, it marks the end of Memory
+		PHB
+		PLA
+		CLC
+		ADC #8						; Otherwise, Move to the next Half Megabyte (8 Banks)
+		PHA
+		PLB
+		INX							; And Increment the Counter
+	BNE @cnt_loop
+	
+	@fail:
+	PLB								; Restore the Data Bank
+	TXA
+	PHA								; Save the counted Memory amount
+	
+	LDX #500
+	@loop:
+		WAI
+		DEX
+	BNE @loop						; Then wait for 5 seconds before continuing
+	
+	LDX #100
+	LDY # .LOWORD(SPLASH_STR)
+	JSR PRINT_STR					; Afterwards, print the Splash Text
+	
+	PLA
+	LSR A
+	PHP
+	JSR PRINT_D8					; Then print the amount of counted Memory
+	LDA #'.'
+	JSR PRINT_CHAR					; Add a Decimal point
+	PLP
+	BCC @even
+	LDA #'5'
+	JSR PRINT_CHAR
+	BRA @skip
+	
+	@even:
+	LDA #'0'
+	JSR PRINT_CHAR					; And then either print a 0 or 5 depending on the "fractional" bit of the MB counter
+	@skip:
+	LDA #'M'
+	JSR PRINT_CHAR
+	LDA #'B'
+	JSR PRINT_CHAR					; Then print "MB" after the number
+	LDA #$0A						; '\n' is not an accepted character for some reason
+	JSR PRINT_CHAR
+	JSR PRINT_CHAR
+	
+	@warm:							; if it's a Warm Start, skip all of the above
 	
 FLUSH_SERIAL:
-	LDA f:CTRL		; Load from the CTRL register
-	AND #FT_RXF		; and Check the RXF status bit in it
-	BNE @EXIT		; If it's 1, then the incoming buffer is empty, so exit
-	LDA f:SERIAL	; If it's 0, then there is more data in the buffer to read
+	LDA f:CTRL						; Load from the CTRL register
+	AND #FT_RXF						; and Check the RXF status bit in it
+	BNE @exit						; If it's 1, then the incoming buffer is empty, so exit
+	LDA f:SERIAL					; If it's 0, then there is more data in the buffer to read
 	BRA FLUSH_SERIAL
-	@EXIT:
+	@exit:
+	
+	
 	
 READY_TEXT:
 	LDX #100
@@ -156,7 +221,7 @@ READY_TEXT:
 HEADER_CHK:
 	JSR GET_CHAR
 	; CMP #'Y'
-	; BEQ PGZ_FORMAT
+	; BEQ PGY_FORMAT
 	CMP #'Z'
 	BEQ PGZ_FORMAT
 	
@@ -169,16 +234,20 @@ STP
 ; PGY_FORMAT:
 	
 	
+	; @EXIT:
 	; PHK
 	; PEA .LOWORD(TERMINATION - 1)
-	; JML [0]
+	; JML [TMP_POINTER]
 ; STP
 
 ; TMP_POINTER
 ; SEG_COUNTER
 
 PGZ_FORMAT:
-	@LOOP:
+	LDX #100
+	LDY # .LOWORD(FORMAT_SUCZ_STR)
+	JSR PRINT_STR
+	@loop:
 		LDY #0
 		LDX #0
 		LDA #$0A
@@ -219,15 +288,15 @@ PGZ_FORMAT:
 		
 		; Check if SEG_COUNTER is already 0, and exit the loop if it is
 		LDA SEG_COUNTER
-		BNE @COPY
+		BNE @copy
 		LDA SEG_COUNTER + 1
-		BNE @COPY
+		BNE @copy
 		LDA SEG_COUNTER + 1
-		BNE @COPY
-		BRA @EXIT
+		BNE @copy
+		BRA @exit
 		
 		
-		@COPY:
+		@copy:
 			; Decrement the 24-bit SEG_COUNTER by 1 and check if it reached -1
 			CLC
 			LDA SEG_COUNTER
@@ -239,29 +308,32 @@ PGZ_FORMAT:
 			LDA SEG_COUNTER + 2
 			SBC #0
 			STA SEG_COUNTER + 2
-			BCC @EOL
+			BCC @eol
 			
 			JSR GET_CHAR
 			STA [TMP_POINTER],Y		; Grab a Byte and Throw it into Memory
 			INY						; Point to the next location in Memory
+			BNE @skipy
+			INC TMP_POINTER + 2		; If Y Overflowed to 0, increment the high byte of the pointer
+			@skipy:
 			INX
 			
 			JSR PRINT_H8
 			LDA #' '
 			JSR PRINT_CHAR
 			CPX #15
-			BNE @COPY
+			BNE @copy
 			LDX #0
 			LDA #$0A
 			JSR PRINT_CHAR
-		BRA @COPY
-		@EOL:
-	BRL @LOOP
-	@EXIT:
+		BRA @copy
+		@eol:
+	BRL @loop
+	@exit:
 	PHK
 	PEA .LOWORD(TERMINATION - 1)
-	JML [TMP_POINTER]
-STP
+JML [TMP_POINTER]
+
 
 TERMINATION:
 	accu8
@@ -277,53 +349,16 @@ TERMINATION:
 	JSR PRINT_H8
 	LDA #$0A
 	JSR PRINT_CHAR
-	
+	JSR PRINT_CHAR
 JMP RESET
 
 
 
-FUNCTIONS:
-	accu8
-	index16
-	LDA #'W'
-	STA f:SERIAL
-	STP
-RTL
 
 
 
 
 
-
-
-
-BRK_ISR:
-	
-RTI
-
-
-
-COP_ISR:
-	
-RTI
-
-
-
-IRQ_ISR:
-	
-RTI
-
-
-
-NMI_ISR:
-	
-RTI
-
-
-
-ABT_ISR:
-	
-RTI
 
 
 
@@ -333,10 +368,10 @@ RTI
 GET_CHAR:
 	.A8
 	.I16				; Assumes 8-bit A and 16-bit X/Y
-	@LOOP:
+	@loop:
 		LDA f:CTRL		; Load from the CTRL register
 		AND #FT_RXF		; and Check the RXF status bit in it
-	BNE @LOOP
+	BNE @loop
 	LDA f:SERIAL		; Load the Byte
 RTS						; And Return
 
@@ -346,17 +381,17 @@ RTS						; And Return
 PRINT_STR:
 	.A8
 	.I16				; Assumes 8-bit A and 16-bit X/Y
-	@LOOP:
+	@loop:
 		LDA f:CTRL		; Load from the CTRL register
 		AND #FT_TXE		; and Check the TXE status bit in it
-	BNE @LOOP
+	BNE @loop
 		LDA a:$0000,Y	; Load a Byte from DB:Y
-		BEQ @EXIT		; If it's 0, exit the function
+		BEQ @exit		; If it's 0, exit the function
 		STA f:SERIAL	; Otherwise write it to SERIAL
 		INY				; Increment the Pointer to the String
 		DEX				; And Decrement the Character Limit
-	BNE @LOOP			; If it reached 0, exit the function
-	@EXIT:
+	BNE @loop			; If it reached 0, exit the function
+	@exit:
 RTS
 
 
@@ -365,10 +400,10 @@ PRINT_CHAR:
 	.A8
 	.I16				; Assumes 8-bit A and 16-bit X/Y
 	PHA					; Save A
-	@WAIT:
+	@wait:
 		LDA f:CTRL		; Load from the CTRL register
 		AND #FT_TXE		; and Check the TXE status bit in it
-	BNE @WAIT
+	BNE @wait
 	PLA					; Get A back
 	STA f:SERIAL		; And Print it
 RTS
@@ -437,7 +472,10 @@ RTS						; And Return
 
 
 
+
 .segment "LoCODE"
+
+ISR_BASE = __BSS_LOAD__
 
 RST_INIT:
 	.A8
@@ -449,25 +487,28 @@ RST_INIT:
 	JML RESET
 
 BRK_INIT:
-	JML BRK_ISR
+	NOP
+JML ISR_BASE
 
 COP_INIT:
-	JML COP_ISR
+	; NOP
+JML ISR_BASE + 4
 
 IRQ_INIT:
-	JML IRQ_ISR
+	; NOP
+JML ISR_BASE + 8
 
 NMI_INIT:
-	JML NMI_ISR
+	; NOP
+JML ISR_BASE + 12
 
 ABT_INIT:
-	JML ABT_ISR
-
-FNC_INIT:
-	JML FUNCTIONS
+	; NOP
+JML ISR_BASE + 16
 
 TER_INIT:
-	JML TERMINATION
+	; NOP
+JML TERMINATION
 
 
 .segment "VECTORS"
@@ -480,7 +521,7 @@ NATIVE_VEC:
 .word .LOWORD(IRQ_INIT)
 
 .word .LOWORD(TER_INIT)
-.word .LOWORD(FNC_INIT)
+.word $0000
 
 EMU_VEC:
 .word .LOWORD(COP_INIT)

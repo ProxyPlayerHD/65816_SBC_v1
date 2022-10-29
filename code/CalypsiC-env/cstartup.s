@@ -39,8 +39,8 @@ __program_start:
 	REP #0x38					; 16-bit registers, no decimal mode
 	;LDX ##.sectionEnd stack
 	;TXS							; set stack
-	;LDA ##_DirectPageStart
-	;TCD							; set direct page
+	LDA ##_DirectPageStart
+	TCD							; set direct page
 #ifdef __CALYPSI_DATA_MODEL_SMALL__
 	LDA ##0
 #else

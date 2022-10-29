@@ -2,6 +2,32 @@
 ; 65816 SBC Include file for Constants
 ;-------------------------------------------------------------------------
 
+.ifndef __SBC_INC
+__SBC_INC = 69
+
+CTRL		= $010000		; CPLD's Internal Control Register
+SERIAL		= $010001		; FT240X Read/Write Port
+FLSR		= $010002		; LFSR
+VIA_ORB		= $010010		; I/O Port B
+VIA_ORA		= $010011		; I/O Port A
+VIA_DDRB	= $010012		; Data Direction Port B
+VIA_DDRA	= $010013		; Data Direction Port A
+VIA_T1CL	= $010014		; Timer 1 Low Byte (read: Counter, write: Latch)
+VIA_T1CH	= $010015		; Timer 1 High Byte (read: Counter, write: Latch + Start Countdown)
+VIA_T1LL	= $010016		; Timer 1 Low Byte (Latch)
+VIA_T1LH	= $010017		; Timer 1 High Byte (Latch)
+VIA_T2CL	= $010018		; Timer 2 Low Byte (read: Counter, write: Latch + Start Countdown)
+VIA_T2CH	= $010019		; Timer 2 High Byte (Counter)
+VIA_SR		= $01001A		; Shift Register
+VIA_ACR		= $01001B		; Auxility Control Register
+VIA_PCR		= $01001C		; Peripheral Control Register
+VIA_IFR		= $01001D		; Interrupt Flag Register
+VIA_IER		= $01001E		; Interrupt Enable Register
+VIA_ORANH	= $01001F		; I/O Port A (without Handshake)
+
+VIA_T1C16	= $010014		; Timer 1 (16-bit Access) (read: Counter, write: Latch)
+VIA_T1L16	= $010016		; Timer 1 (16-bit Access) (Latch)
+VIA_T2C16	= $010018		; Timer 2 (16-bit Access) (read: Counter, write: Latch + Start Countdown)
 
 T1_MODE0	= %00000000		; One shot mode
 T1_MODE1	= %01000000		; Continuous mode
@@ -14,41 +40,110 @@ CLK_12M		= $04E0
 FT_TXE		= %01000000		; FT240X TXE bit mask (0 = Data can be written to SERIAL)
 FT_RXF		= %10000000		; FT240X RXF bit mask (0 = Data can be read from SERIAL)
 
-CTRL		= $00FE00		; CPLD's Internal Control Register
-SERIAL		= $00FE01		; FT240X Read/Write Port
-FLSR		= $00FE02		; LFSR
+CTRL_VIAI	= %00000001		; VIA Interrupt bit mask
+CTRL_T1I	= %00000010		; 50x T1 Interrupt bit mask
+CTRL_EXI	= %00000100		; External Interrupt bit mask
 
-VIA_ORB		= $00FE10		; I/O Port B
-VIA_ORA		= $00FE11		; I/O Port A
-VIA_DDRB	= $00FE12		; Data Direction Port B
-VIA_DDRA	= $00FE13		; Data Direction Port A
-VIA_T1CL	= $00FE14		; Timer 1 Low Byte (read: Counter, write: Latch)
-VIA_T1CH	= $00FE15		; Timer 1 High Byte (read: Counter, write: Latch + Start Countdown)
-VIA_T1LL	= $00FE16		; Timer 1 Low Byte (Latch)
-VIA_T1LH	= $00FE17		; Timer 1 High Byte (Latch)
-VIA_T2CL	= $00FE18		; Timer 2 Low Byte (read: Counter, write: Latch + Start Countdown)
-VIA_T2CH	= $00FE19		; Timer 2 High Byte (Counter)
-VIA_SR		= $00FE1A		; Shift Register
-VIA_ACR		= $00FE1B		; Auxility Control Register
-VIA_PCR		= $00FE1C		; Peripheral Control Register
-VIA_IFR		= $00FE1D		; Interrupt Flag Register
-VIA_IER		= $00FE1E		; Interrupt Enable Register
-VIA_ORANH	= $00FE1F		; I/O Port A (without Handshake)
 
-VIA_T1C16	= $00FE14		; Timer 1 (16-bit Access) (read: Counter, write: Latch)
-VIA_T1L16	= $00FE16		; Timer 1 (16-bit Access) (Latch)
-VIA_T2C16	= $00FE18		; Timer 2 (16-bit Access) (read: Counter, write: Latch + Start Countdown)
+SPI_IDLE	= %00000110
+
+SPI_SCK		= %00000001
+SPI_MOSI	= %00000010
+SPI_SS		= %00000100
+SPI_MISO	= %10000000
+
+SPI_SCK_N	= %11111110
+SPI_MOSI_N	= %11111101
+SPI_SS_N	= %11111011
+SPI_MISO_N	= %01111111
+
+
+.macro	BSR		addr
+	PER :+ - 1
+	BRL addr
+	:
+.endmacro
+
+
+.macro	BEQL	addr
+	BNE :+
+	BRL addr
+	:
+.endmacro
+
+.macro	BNEL	addr
+	BEQ :+
+	BRL addr
+	:
+.endmacro
+
+.macro	BCSL	addr
+	BCC :+
+	BRL addr
+	:
+.endmacro
+
+.macro	BCCL	addr
+	BCS :+
+	BRL addr
+	:
+.endmacro
+
+.macro	BMIL	addr
+	BPL :+
+	BRL addr
+	:
+.endmacro
+
+.macro	BPLL	addr
+	BMI :+
+	BRL addr
+	:
+.endmacro
+
+.macro	BVSL	addr
+	BVC :+
+	BRL addr
+	:
+.endmacro
+
+.macro	BVCL	addr
+	BVS :+
+	BRL addr
+	:
+.endmacro
+
+
+
+
+
 
 
 
 
 
 .macro	debug	char
+	PHP
 	PHA
 	LDA #char
 	STA f:SERIAL
 	PLA
+	PLP
 .endmacro
+
+.macro PY16
+	PHP
+	LDA #$0A
+	STA f:SERIAL
+	LDA #'0'
+	STA f:SERIAL
+	LDA #'x'
+	STA f:SERIAL
+	TYA
+	JSR PRINT_H8
+	PLP
+.endmacro
+
 
 .macro	accu8
 	SEP #%00100000
@@ -83,4 +178,4 @@ VIA_T2C16	= $00FE18		; Timer 2 (16-bit Access) (read: Counter, write: Latch + St
 .endmacro
 
 
-
+.endif

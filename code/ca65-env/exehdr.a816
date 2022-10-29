@@ -15,14 +15,14 @@
 .byte "Z"					; "Z" Magic Letter
 
 .segment "CODE"
-.faraddr __CODE_LOAD__		; Address to Load Code Segment into
+.faraddr __CODE_LOAD__ + 6	; Address to Load Code Segment into
 .faraddr __CODE_SIZE__ - 6	; Size of Segment
 
 .segment "DATA"
-.faraddr __DATA_LOAD__		; Address to Load Code Segment into
+.faraddr __DATA_LOAD__ + 6	; Address to Load Code Segment into
 .faraddr __DATA_SIZE__ - 6	; Size of Segment
 .byte $69
 
 .segment "ENDH"
-.faraddr init - 6			; Address to Jump to after Loading
+.faraddr init				; Address to Jump to after Loading
 .faraddr $000000
